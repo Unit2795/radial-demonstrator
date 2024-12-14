@@ -1,7 +1,9 @@
+import Grid from "./components/Grid/Grid.tsx";
+
 function App() {
   return (
     <>
-        <div>123</div>
+        <Grid/>
     </>
   )
 }
