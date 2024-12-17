@@ -1,4 +1,4 @@
-import {useCallback, useRef, useState} from "react";
+import {useCallback, useRef, useState, MouseEvent} from "react";
 import {
 	MAXRADIUS,
 	SPOKE_STANDOFF_DISTANCE,
@@ -45,7 +45,7 @@ const Grid = () => {
 	}, [radials, spokes])
 
 	// Converts mouse position to SVG coordinates and updates ghost dot position, snapping to the nearest radial circle or spoke line based on proximity and standoff rules.
-	const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+	const handleMouseMove = useCallback((event: MouseEvent<SVGSVGElement>) => {
 		if (!svgRef.current) return;
 		const CTM = svgRef.current.getScreenCTM();
 		if (!CTM) return;
