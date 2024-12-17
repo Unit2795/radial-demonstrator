@@ -1,6 +1,5 @@
 import {useCallback, useRef, useState} from "react";
 import {
-	CENTER,
 	findClosestRadial,
 	findClosestSpoke, MAXRADIUS,
 	SPOKE_STANDOFF_DISTANCE,
@@ -8,7 +7,7 @@ import {
 	toPolar,
 	VIEWPORT
 } from "./helpers.ts";
-
+import GridLines from "./GridLines.tsx";
 
 
 const Grid = () => {
@@ -19,6 +18,7 @@ const Grid = () => {
 
 	const [ghostDot, setGhostDot] = useState<{ x: number; y: number; } | null>(null);
 
+	// Converts mouse position to SVG coordinates and updates ghost dot position, snapping to the nearest radial circle or spoke line based on proximity and standoff rules.
 	const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
 		if (!svgRef.current) return;
 		const CTM = svgRef.current.getScreenCTM();
@@ -82,48 +82,10 @@ const Grid = () => {
 				</marker>
 			</defs>
 
-			{
-				Array.from({length: radials}).map((_, i) => {
-					// Calculate the radius for the current radial axis
-					const radius = (MAXRADIUS / radials) * (i + 1);
-
-					return (
-						<circle
-							key={i}
-							cx="50%"
-							cy="50%"
-							r={radius}
-							stroke="white"
-							fill="none"
-							strokeWidth="1"
-						/>
-					);
-				})
-			}
-			{
-				Array.from({length: spokes}).map((_, i) => {
-					const angle = (i * 2 * Math.PI) / spokes;
-					const innerRadius = i % 4 === 0 ?
-						0 :
-						(MAXRADIUS / radials) * SPOKE_STANDOFF_DISTANCE;
-
-					// Calculate start points using the inner radius
-					const startPoint = toCartesian({ angle, radius: innerRadius });
-					const endPoint = toCartesian({ angle, radius: MAXRADIUS });
-
-					return (
-						<line
-							key={i}
-							x1={startPoint.x}
-							y1={startPoint.y}
-							x2={endPoint.x}
-							y2={endPoint.y}
-							stroke={"white"}
-							strokeWidth={1}
-						/>
-					);
-				})
-			}
+			<GridLines
+				radials={radials}
+				spokes={spokes}
+			/>
 
 			{ghostDot && (
 				<circle

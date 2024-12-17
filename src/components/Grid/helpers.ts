@@ -1,11 +1,5 @@
-type Point = { x: number; y: number };
-type PolarCoord = { radius: number; angle: number };
-export type GridConfig = {
-	radials: number;
-	spokes: number;
-	padding: number;
-	viewport: number;
-};
+export type Point = { x: number; y: number };
+export type PolarCoord = { radius: number; angle: number };
 
 // Amount of padding in pixels to add to the edge of the SVG container, to prevent clipping
 const PADDING = 50;
@@ -33,6 +27,7 @@ export const toCartesian = (polar: PolarCoord): Point => ({
 	x: CENTER + Math.cos(polar.angle) * polar.radius,
 	y: CENTER + Math.sin(polar.angle) * polar.radius
 });
+
 
 // Functions to find closest grid elements
 export const findClosestRadial = (radius: number, radials: number) => {
