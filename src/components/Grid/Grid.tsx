@@ -1,7 +1,7 @@
 import {useRef, useState} from "react";
 
 // Amount of padding in pixels to add to the edge of the SVG container, to prevent clipping
-const PADDING = 20;
+const PADDING = 50;
 const VIEWPORT = 1000;
 const CENTER = VIEWPORT / 2;
 const MAXRADIUS = VIEWPORT / 2 - PADDING;
@@ -21,6 +21,21 @@ const Grid = () => {
 			ref={svgRef}
 			preserveAspectRatio="xMidYMid meet"
 		>
+			<defs>
+				{/*Marker to be used as an arrowhead*/}
+				<marker
+					fill={"white"}
+					id="arrow"
+					viewBox="0 0 10 10"
+					refX="5"
+					refY="5"
+					markerWidth="6"
+					markerHeight="6"
+					orient="auto-start-reverse">
+					<path d="M 0 0 L 10 5 L 0 10 z"/>
+				</marker>
+			</defs>
+
 			{
 				Array.from({length: radials}).map((_, i) => {
 					// Calculate the radius for the current radial axis
