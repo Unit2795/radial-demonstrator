@@ -20,13 +20,15 @@ const Grid = () => {
 	const calculateCellPath = useCallback((radialIndex: number, spokeIndex: number) => {
 		const radialStep = MAXRADIUS / radials;
 		const spokeAngle = (2 * Math.PI) / spokes;
-
 		const innerRadius = radialIndex * radialStep;
 		const outerRadius = (radialIndex + 1) * radialStep;
 
 		// Check if within standoff and if spoke should be drawn
 		let startAngle = spokeIndex * spokeAngle;
 		let endAngle = (spokeIndex + 1) * spokeAngle;
+
+		// Check if this cell is within the "standoff" distance from the center
+		// Standoff is used to create wider segments near the center for better visibility/interaction
 		const isWithinStandoff = innerRadius < (MAXRADIUS / radials) * SPOKE_STANDOFF_DISTANCE;
 
 		if(isWithinStandoff){
@@ -41,19 +43,21 @@ const Grid = () => {
 		const p3 = toCartesian({ radius: outerRadius, angle: endAngle });
 		const p4 = toCartesian({ radius: innerRadius, angle: endAngle });
 
-		return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} A ${outerRadius} ${outerRadius} 0 0 1 ${p3.x} ${p3.y} L ${p4.x} ${p4.y} A ${innerRadius} ${innerRadius} 0 0 0 ${p1.x} ${p1.y}`;
+		return `M ${p1.x} ${p1.y} 
+				L ${p2.x} ${p2.y} 
+				A ${outerRadius} ${outerRadius} 0 0 1 ${p3.x} ${p3.y} 
+				L ${p4.x} ${p4.y} 
+				A ${innerRadius} ${innerRadius} 0 0 0 ${p1.x} ${p1.y}`;
 	}, [radials, spokes])
 
 	// Converts mouse position to SVG coordinates and updates ghost dot position, snapping to the nearest radial circle or spoke line based on proximity and standoff rules.
 	const handleMouseMove = useCallback((event: MouseEvent<SVGSVGElement>) => {
-		if (!svgRef.current) return;
-		const CTM = svgRef.current.getScreenCTM();
-		if (!CTM) return;
+		const svg = svgRef.current;
+		const CTM = svg?.getScreenCTM();
+		if (!svg || !CTM) return;
 
 		// Convert screen coordinates to SVG coordinates
-		const svgPoint = new DOMPoint(event.clientX, event.clientY)
-			.matrixTransform(CTM.inverse());
-
+		const svgPoint = new DOMPoint(event.clientX, event.clientY).matrixTransform(CTM.inverse());
 		// Convert to polar coordinates
 		const polar = toPolar({ x: svgPoint.x, y: svgPoint.y });
 
@@ -66,9 +70,8 @@ const Grid = () => {
 		// Calculate cell indices for highlighting
 		const radialIndex = Math.floor(polar.radius / (MAXRADIUS / radials));
 		const spokeIndex = Math.floor(polar.angle / (2 * Math.PI / spokes));
-		const path = calculateCellPath(radialIndex, spokeIndex);
 
-		setHighlightedCell(path);
+		setHighlightedCell(calculateCellPath(radialIndex, spokeIndex));
 	}, [calculateCellPath, radials, spokes]);
 
     return (
