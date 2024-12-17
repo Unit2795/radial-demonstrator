@@ -1,6 +1,7 @@
 import {useCallback, useRef, useState, MouseEvent} from "react";
 import {
 	MAXRADIUS,
+	PADDING,
 	SPOKE_STANDOFF_DISTANCE,
 	toCartesian,
 	toPolar,
@@ -62,7 +63,7 @@ const Grid = () => {
 		const polar = toPolar({ x: svgPoint.x, y: svgPoint.y });
 
 		// Handle points outside the grid
-		if (polar.radius > MAXRADIUS) {
+		if (polar.radius > (MAXRADIUS + PADDING)) {
 			setHighlightedCell(null);
 			return;
 		}

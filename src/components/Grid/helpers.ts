@@ -2,7 +2,7 @@ export type Point = { x: number; y: number };
 export type PolarCoord = { radius: number; angle: number };
 
 // Amount of padding in pixels to add to the edge of the SVG container, to prevent clipping
-const PADDING = 50;
+export const PADDING = 50;
 export const VIEWPORT = 1000;
 export const CENTER = VIEWPORT / 2;
 export const MAXRADIUS = VIEWPORT / 2 - PADDING;
