@@ -27,33 +27,3 @@ export const toCartesian = (polar: PolarCoord): Point => ({
 	x: CENTER + Math.cos(polar.angle) * polar.radius,
 	y: CENTER + Math.sin(polar.angle) * polar.radius
 });
-
-
-// Functions to find closest grid elements
-export const findClosestRadial = (radius: number, radials: number) => {
-	const radialStep = MAXRADIUS / radials;
-	const closestIndex = Math.round(radius / radialStep);
-	return {
-		radius: radialStep * closestIndex,
-		distance: Math.abs(radius - (radialStep * closestIndex))
-	};
-};
-
-export const findClosestSpoke = (polar: PolarCoord, spokes: number, isWithinStandoff: boolean) => {
-	const spokeAngle = (2 * Math.PI) / spokes;
-	let spokeIndex = polar.angle / spokeAngle;
-
-	// Snap to major spokes within standoff distance
-	if (isWithinStandoff) {
-		spokeIndex = Math.round(spokeIndex / 4) * 4;
-	}
-
-	const closestIndex = Math.round(spokeIndex);
-	const angle = closestIndex * spokeAngle;
-
-	return {
-		angle,
-		index: closestIndex,
-		distance: Math.abs(polar.radius * (polar.angle - angle))
-	};
-};

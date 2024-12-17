@@ -1,7 +1,6 @@
 import {useCallback, useRef, useState} from "react";
 import {
-	findClosestRadial,
-	findClosestSpoke, MAXRADIUS,
+	MAXRADIUS,
 	SPOKE_STANDOFF_DISTANCE,
 	toCartesian,
 	toPolar,
@@ -16,8 +15,7 @@ const Grid = () => {
 	const [radials] = useState(8);
 	const [spokes] = useState(48);
 
-	const [ghostDot, setGhostDot] = useState<{ x: number; y: number; } | null>(null);
-	const [highlightedCell, setHighlightedCell] = useState<{ radialIndex: number; spokeIndex: number } | null>(null);
+	const [highlightedCell, setHighlightedCell] = useState<string | null>(null);
 
 	// Converts mouse position to SVG coordinates and updates ghost dot position, snapping to the nearest radial circle or spoke line based on proximity and standoff rules.
 	const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
@@ -34,35 +32,22 @@ const Grid = () => {
 
 		// Handle points outside the grid
 		if (polar.radius > MAXRADIUS) {
-			setGhostDot(toCartesian({ ...polar, radius: MAXRADIUS }));
+			setHighlightedCell(null);
 			return;
 		}
 
-		// Calculate standoff parameters
-		const standoffRadius = (MAXRADIUS / radials) * SPOKE_STANDOFF_DISTANCE;
-		const isWithinStandoff = polar.radius <= standoffRadius;
-
-		// Find closest grid elements
-		const radial = findClosestRadial(polar.radius, radials);
-		const spoke = findClosestSpoke(polar, spokes, isWithinStandoff);
-
-		// Determine snap target
-		const snapToRadial =
-			radial.distance <= spoke.distance ||
-			(isWithinStandoff && spoke.index % 4 !== 0);
-
-		// Calculate final position
-		const snapPoint = snapToRadial
-			? toCartesian({ angle: polar.angle, radius: radial.radius })
-			: toCartesian({ angle: spoke.angle, radius: polar.radius });
-
-		setGhostDot(snapPoint);
-
 		// Calculate cell indices for highlighting
 		const radialIndex = Math.floor(polar.radius / (MAXRADIUS / radials));
-		const spokeIndex = Math.floor(polar.angle / (2 * Math.PI / spokes));
+		let spokeIndex = Math.floor(polar.angle / (2 * Math.PI / spokes));
 
-		setHighlightedCell({ radialIndex, spokeIndex });
+		const isWithinStandoff = polar.radius < (MAXRADIUS / radials) * SPOKE_STANDOFF_DISTANCE;
+		if (isWithinStandoff) {
+			spokeIndex = Math.floor(spokeIndex / 4) * 4;
+		}
+
+		const path = calculateCellPath(radialIndex, spokeIndex);
+
+		setHighlightedCell(path);
 	}, [radials, spokes]);
 
 	const calculateCellPath = (radialIndex: number, spokeIndex: number) => {
@@ -71,8 +56,18 @@ const Grid = () => {
 
 		const innerRadius = radialIndex * radialStep;
 		const outerRadius = (radialIndex + 1) * radialStep;
-		const startAngle = spokeIndex * spokeAngle;
-		const endAngle = (spokeIndex + 1) * spokeAngle;
+
+		// Check if within standoff and if spoke should be drawn
+		let startAngle = spokeIndex * spokeAngle;
+		let endAngle = (spokeIndex + 1) * spokeAngle;
+		const isWithinStandoff = innerRadius < (MAXRADIUS / radials) * SPOKE_STANDOFF_DISTANCE;
+
+		if(isWithinStandoff){
+			const startSpoke = Math.floor(spokeIndex / 4) * 4;
+			const endSpoke = Math.ceil((spokeIndex + 1) / 4) * 4;
+			startAngle = startSpoke * spokeAngle;
+			endAngle = endSpoke * spokeAngle;
+		}
 
 		const p1 = toCartesian({ radius: innerRadius, angle: startAngle });
 		const p2 = toCartesian({ radius: outerRadius, angle: startAngle });
@@ -84,12 +79,12 @@ const Grid = () => {
 
     return (
 		<svg
-			className={"max-h-screen mx-auto"}
+			className={"max-h-screen mx-auto cursor-pointer"}
 			viewBox={`0 0 ${VIEWPORT} ${VIEWPORT}`}
 			ref={svgRef}
 			preserveAspectRatio="xMidYMid meet"
 			onMouseMove={handleMouseMove}
-			onMouseLeave={() => {setGhostDot(null); setHighlightedCell(null);}}
+			onMouseLeave={() => setHighlightedCell(null)}
 		>
 			<defs>
 				{/*Marker to be used as an arrowhead*/}
@@ -113,20 +108,11 @@ const Grid = () => {
 
 			{highlightedCell && (
 				<path
-					d={calculateCellPath(highlightedCell.radialIndex, highlightedCell.spokeIndex)}
-					fill="rgba(255, 255, 255, 0.3)" // Blue with some transparency
+					d={highlightedCell}
+					fill="rgba(255, 255, 255, 0.3)"
 					stroke="none"
 				/>
 			)}
-
-			{/*{ghostDot && (
-				<circle
-					cx={ghostDot.x}
-					cy={ghostDot.y}
-					r="5"
-					fill="rgba(255, 255, 255, 0.5)"
-				/>
-			)}*/}
 		</svg>
 	);
 };
