@@ -17,6 +17,7 @@ const Grid = () => {
 	const [spokes] = useState(48);
 
 	const [ghostDot, setGhostDot] = useState<{ x: number; y: number; } | null>(null);
+	const [highlightedCell, setHighlightedCell] = useState<{ radialIndex: number; spokeIndex: number } | null>(null);
 
 	// Converts mouse position to SVG coordinates and updates ghost dot position, snapping to the nearest radial circle or spoke line based on proximity and standoff rules.
 	const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
@@ -56,7 +57,30 @@ const Grid = () => {
 			: toCartesian({ angle: spoke.angle, radius: polar.radius });
 
 		setGhostDot(snapPoint);
+
+		// Calculate cell indices for highlighting
+		const radialIndex = Math.floor(polar.radius / (MAXRADIUS / radials));
+		const spokeIndex = Math.floor(polar.angle / (2 * Math.PI / spokes));
+
+		setHighlightedCell({ radialIndex, spokeIndex });
 	}, [radials, spokes]);
+
+	const calculateCellPath = (radialIndex: number, spokeIndex: number) => {
+		const radialStep = MAXRADIUS / radials;
+		const spokeAngle = (2 * Math.PI) / spokes;
+
+		const innerRadius = radialIndex * radialStep;
+		const outerRadius = (radialIndex + 1) * radialStep;
+		const startAngle = spokeIndex * spokeAngle;
+		const endAngle = (spokeIndex + 1) * spokeAngle;
+
+		const p1 = toCartesian({ radius: innerRadius, angle: startAngle });
+		const p2 = toCartesian({ radius: outerRadius, angle: startAngle });
+		const p3 = toCartesian({ radius: outerRadius, angle: endAngle });
+		const p4 = toCartesian({ radius: innerRadius, angle: endAngle });
+
+		return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} A ${outerRadius} ${outerRadius} 0 0 1 ${p3.x} ${p3.y} L ${p4.x} ${p4.y} A ${innerRadius} ${innerRadius} 0 0 0 ${p1.x} ${p1.y}`;
+	};
 
     return (
 		<svg
@@ -65,7 +89,7 @@ const Grid = () => {
 			ref={svgRef}
 			preserveAspectRatio="xMidYMid meet"
 			onMouseMove={handleMouseMove}
-			onMouseLeave={() => setGhostDot(null)}
+			onMouseLeave={() => {setGhostDot(null); setHighlightedCell(null);}}
 		>
 			<defs>
 				{/*Marker to be used as an arrowhead*/}
@@ -87,14 +111,22 @@ const Grid = () => {
 				spokes={spokes}
 			/>
 
-			{ghostDot && (
+			{highlightedCell && (
+				<path
+					d={calculateCellPath(highlightedCell.radialIndex, highlightedCell.spokeIndex)}
+					fill="rgba(255, 255, 255, 0.3)" // Blue with some transparency
+					stroke="none"
+				/>
+			)}
+
+			{/*{ghostDot && (
 				<circle
 					cx={ghostDot.x}
 					cy={ghostDot.y}
 					r="5"
 					fill="rgba(255, 255, 255, 0.5)"
 				/>
-			)}
+			)}*/}
 		</svg>
 	);
 };
