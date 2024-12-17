@@ -1,12 +1,15 @@
-import {useRef, useState} from "react";
+import {useCallback, useRef, useState} from "react";
+import {
+	CENTER,
+	findClosestRadial,
+	findClosestSpoke, MAXRADIUS,
+	SPOKE_STANDOFF_DISTANCE,
+	toCartesian,
+	toPolar,
+	VIEWPORT
+} from "./helpers.ts";
 
-// Amount of padding in pixels to add to the edge of the SVG container, to prevent clipping
-const PADDING = 50;
-const VIEWPORT = 1000;
-const CENTER = VIEWPORT / 2;
-const MAXRADIUS = VIEWPORT / 2 - PADDING;
-// Number of radial axes away from the center of the grid to draw a reduced number of spokes
-const SPOKE_STANDOFF_DISTANCE = 2;
+
 
 const Grid = () => {
 	const svgRef = useRef<SVGSVGElement>(null);
@@ -14,12 +17,55 @@ const Grid = () => {
 	const [radials] = useState(8);
 	const [spokes] = useState(48);
 
+	const [ghostDot, setGhostDot] = useState<{ x: number; y: number; } | null>(null);
+
+	const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+		if (!svgRef.current) return;
+		const CTM = svgRef.current.getScreenCTM();
+		if (!CTM) return;
+
+		// Convert screen coordinates to SVG coordinates
+		const svgPoint = new DOMPoint(event.clientX, event.clientY)
+			.matrixTransform(CTM.inverse());
+
+		// Convert to polar coordinates
+		const polar = toPolar({ x: svgPoint.x, y: svgPoint.y });
+
+		// Handle points outside the grid
+		if (polar.radius > MAXRADIUS) {
+			setGhostDot(toCartesian({ ...polar, radius: MAXRADIUS }));
+			return;
+		}
+
+		// Calculate standoff parameters
+		const standoffRadius = (MAXRADIUS / radials) * SPOKE_STANDOFF_DISTANCE;
+		const isWithinStandoff = polar.radius <= standoffRadius;
+
+		// Find closest grid elements
+		const radial = findClosestRadial(polar.radius, radials);
+		const spoke = findClosestSpoke(polar, spokes, isWithinStandoff);
+
+		// Determine snap target
+		const snapToRadial =
+			radial.distance <= spoke.distance ||
+			(isWithinStandoff && spoke.index % 4 !== 0);
+
+		// Calculate final position
+		const snapPoint = snapToRadial
+			? toCartesian({ angle: polar.angle, radius: radial.radius })
+			: toCartesian({ angle: spoke.angle, radius: polar.radius });
+
+		setGhostDot(snapPoint);
+	}, [radials, spokes]);
+
     return (
 		<svg
 			className={"max-h-screen mx-auto"}
 			viewBox={`0 0 ${VIEWPORT} ${VIEWPORT}`}
 			ref={svgRef}
 			preserveAspectRatio="xMidYMid meet"
+			onMouseMove={handleMouseMove}
+			onMouseLeave={() => setGhostDot(null)}
 		>
 			<defs>
 				{/*Marker to be used as an arrowhead*/}
@@ -62,26 +108,31 @@ const Grid = () => {
 						(MAXRADIUS / radials) * SPOKE_STANDOFF_DISTANCE;
 
 					// Calculate start points using the inner radius
-					const x1 = CENTER + Math.cos(angle) * innerRadius;
-					const y1 = CENTER + Math.sin(angle) * innerRadius;
-
-					// End points remain the same
-					const x2 = CENTER + Math.cos(angle) * MAXRADIUS;
-					const y2 = CENTER + Math.sin(angle) * MAXRADIUS;
+					const startPoint = toCartesian({ angle, radius: innerRadius });
+					const endPoint = toCartesian({ angle, radius: MAXRADIUS });
 
 					return (
 						<line
 							key={i}
-							x1={x1}
-							y1={y1}
-							x2={x2}
-							y2={y2}
+							x1={startPoint.x}
+							y1={startPoint.y}
+							x2={endPoint.x}
+							y2={endPoint.y}
 							stroke={"white"}
 							strokeWidth={1}
 						/>
 					);
 				})
 			}
+
+			{ghostDot && (
+				<circle
+					cx={ghostDot.x}
+					cy={ghostDot.y}
+					r="5"
+					fill="rgba(255, 255, 255, 0.5)"
+				/>
+			)}
 		</svg>
 	);
 };
