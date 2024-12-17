@@ -1,12 +1,5 @@
-import {useCallback, useRef, useState, MouseEvent} from "react";
-import {
-	MAXRADIUS,
-	PADDING,
-	SPOKE_STANDOFF_DISTANCE,
-	toCartesian,
-	toPolar,
-	VIEWPORT
-} from "./helpers.ts";
+import {MouseEvent, useCallback, useRef, useState} from "react";
+import {CellPosition, MAXRADIUS, PADDING, SPOKE_STANDOFF_DISTANCE, toCartesian, toPolar, VIEWPORT} from "./helpers.ts";
 import GridLines from "./GridLines.tsx";
 
 
@@ -16,7 +9,15 @@ const Grid = () => {
 	const [radials] = useState(8);
 	const [spokes] = useState(48);
 
-	const [highlightedCell, setHighlightedCell] = useState<string | null>(null);
+	const [highlightedCell, setHighlightedCell] = useState<{
+		path: string;
+		position: CellPosition;
+	} | null>(null);
+	const [selectedCell, setSelectedCell] = useState<{
+		path: string;
+		position: CellPosition;
+	} | null>(null);
+	const [arrows, setArrows] = useState<CellPosition[][]>([]);
 
 	const calculateCellPath = useCallback((radialIndex: number, spokeIndex: number) => {
 		const radialStep = MAXRADIUS / radials;
@@ -49,7 +50,37 @@ const Grid = () => {
 				A ${outerRadius} ${outerRadius} 0 0 1 ${p3.x} ${p3.y} 
 				L ${p4.x} ${p4.y} 
 				A ${innerRadius} ${innerRadius} 0 0 0 ${p1.x} ${p1.y}`;
-	}, [radials, spokes])
+	}, [radials, spokes]);
+
+	const getCellCenter = useCallback((position: CellPosition) => {
+		const radialStep = MAXRADIUS / radials;
+		const spokeAngle = (2 * Math.PI) / spokes;
+		const radius = (position.radialIndex + 0.5) * radialStep;
+		const angle = (position.spokeIndex + 0.5) * spokeAngle;
+		return toCartesian({ radius, angle });
+	}, [radials, spokes]);
+
+	const handleClick = () => {
+		if (!highlightedCell) return null;
+
+		setSelectedCell(prev => {
+			// Check if cell is already selected
+			if (
+				prev &&
+				(prev.position.radialIndex === highlightedCell.position.radialIndex) &&
+				(prev.position.spokeIndex === highlightedCell.position.spokeIndex)
+			) {
+				return null;
+			} else if (prev && selectedCell) {
+				setArrows(prevArrows => {
+					return [...prevArrows, [selectedCell.position, highlightedCell.position]];
+				});
+				return null;
+			}
+
+			return highlightedCell;
+		});
+	};
 
 	// Converts mouse position to SVG coordinates and updates ghost dot position, snapping to the nearest radial circle or spoke line based on proximity and standoff rules.
 	const handleMouseMove = useCallback((event: MouseEvent<SVGSVGElement>) => {
@@ -72,7 +103,10 @@ const Grid = () => {
 		const radialIndex = Math.floor(polar.radius / (MAXRADIUS / radials));
 		const spokeIndex = Math.floor(polar.angle / (2 * Math.PI / spokes));
 
-		setHighlightedCell(calculateCellPath(radialIndex, spokeIndex));
+		setHighlightedCell({
+			path: calculateCellPath(radialIndex, spokeIndex),
+			position: { radialIndex, spokeIndex }
+		});
 	}, [calculateCellPath, radials, spokes]);
 
     return (
@@ -83,6 +117,7 @@ const Grid = () => {
 			preserveAspectRatio="xMidYMid meet"
 			onMouseMove={handleMouseMove}
 			onMouseLeave={() => setHighlightedCell(null)}
+			onClick={handleClick}
 		>
 			<defs>
 				{/*Marker to be used as an arrowhead*/}
@@ -104,9 +139,36 @@ const Grid = () => {
 				spokes={spokes}
 			/>
 
+
+			{/* Draw connection lines between selected cells */}
+			{arrows.length >= 2 && arrows.map((cell, index) => {
+				const start = getCellCenter(cell[0]);
+				const end = getCellCenter(cell[1]);
+				return (
+					<line
+						key={`connection-${index}`}
+						x1={start.x}
+						y1={start.y}
+						x2={end.x}
+						y2={end.y}
+						stroke="white"
+						strokeWidth="2"
+						markerEnd="url(#arrow)"
+					/>
+				);
+			})}
+
+			{selectedCell && (
+				<path
+					d={selectedCell.path}
+					fill="rgba(0, 255, 0, 0.3)"
+					stroke="none"
+				/>
+			)}
+
 			{highlightedCell && (
 				<path
-					d={highlightedCell}
+					d={highlightedCell.path}
 					fill="rgba(255, 255, 255, 0.3)"
 					stroke="none"
 				/>

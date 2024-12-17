@@ -1,5 +1,6 @@
 export type Point = { x: number; y: number };
 export type PolarCoord = { radius: number; angle: number };
+export interface CellPosition { radialIndex: number;spokeIndex: number }
 
 // Amount of padding in pixels to add to the edge of the SVG container, to prevent clipping
 export const PADDING = 50;

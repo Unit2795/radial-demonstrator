@@ -16,6 +16,17 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+button {
+  background: #666666;
+  color: white;
+  width: 100%;
+  padding: 10px;
+
+  &:hover {
+    background: #4d4d4d;
+  }
+}
+
 html, body {
   margin: 0;
   padding: 0;
