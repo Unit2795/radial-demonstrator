@@ -17,40 +17,7 @@ const Grid = () => {
 
 	const [highlightedCell, setHighlightedCell] = useState<string | null>(null);
 
-	// Converts mouse position to SVG coordinates and updates ghost dot position, snapping to the nearest radial circle or spoke line based on proximity and standoff rules.
-	const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
-		if (!svgRef.current) return;
-		const CTM = svgRef.current.getScreenCTM();
-		if (!CTM) return;
-
-		// Convert screen coordinates to SVG coordinates
-		const svgPoint = new DOMPoint(event.clientX, event.clientY)
-			.matrixTransform(CTM.inverse());
-
-		// Convert to polar coordinates
-		const polar = toPolar({ x: svgPoint.x, y: svgPoint.y });
-
-		// Handle points outside the grid
-		if (polar.radius > MAXRADIUS) {
-			setHighlightedCell(null);
-			return;
-		}
-
-		// Calculate cell indices for highlighting
-		const radialIndex = Math.floor(polar.radius / (MAXRADIUS / radials));
-		let spokeIndex = Math.floor(polar.angle / (2 * Math.PI / spokes));
-
-		const isWithinStandoff = polar.radius < (MAXRADIUS / radials) * SPOKE_STANDOFF_DISTANCE;
-		if (isWithinStandoff) {
-			spokeIndex = Math.floor(spokeIndex / 4) * 4;
-		}
-
-		const path = calculateCellPath(radialIndex, spokeIndex);
-
-		setHighlightedCell(path);
-	}, [radials, spokes]);
-
-	const calculateCellPath = (radialIndex: number, spokeIndex: number) => {
+	const calculateCellPath = useCallback((radialIndex: number, spokeIndex: number) => {
 		const radialStep = MAXRADIUS / radials;
 		const spokeAngle = (2 * Math.PI) / spokes;
 
@@ -75,7 +42,34 @@ const Grid = () => {
 		const p4 = toCartesian({ radius: innerRadius, angle: endAngle });
 
 		return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} A ${outerRadius} ${outerRadius} 0 0 1 ${p3.x} ${p3.y} L ${p4.x} ${p4.y} A ${innerRadius} ${innerRadius} 0 0 0 ${p1.x} ${p1.y}`;
-	};
+	}, [radials, spokes])
+
+	// Converts mouse position to SVG coordinates and updates ghost dot position, snapping to the nearest radial circle or spoke line based on proximity and standoff rules.
+	const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+		if (!svgRef.current) return;
+		const CTM = svgRef.current.getScreenCTM();
+		if (!CTM) return;
+
+		// Convert screen coordinates to SVG coordinates
+		const svgPoint = new DOMPoint(event.clientX, event.clientY)
+			.matrixTransform(CTM.inverse());
+
+		// Convert to polar coordinates
+		const polar = toPolar({ x: svgPoint.x, y: svgPoint.y });
+
+		// Handle points outside the grid
+		if (polar.radius > MAXRADIUS) {
+			setHighlightedCell(null);
+			return;
+		}
+
+		// Calculate cell indices for highlighting
+		const radialIndex = Math.floor(polar.radius / (MAXRADIUS / radials));
+		const spokeIndex = Math.floor(polar.angle / (2 * Math.PI / spokes));
+		const path = calculateCellPath(radialIndex, spokeIndex);
+
+		setHighlightedCell(path);
+	}, [calculateCellPath, radials, spokes]);
 
     return (
 		<svg
