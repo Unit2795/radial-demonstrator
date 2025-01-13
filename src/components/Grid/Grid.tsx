@@ -52,6 +52,7 @@ const Grid = () => {
 				A ${innerRadius} ${innerRadius} 0 0 0 ${p1.x} ${p1.y}`;
 	}, [radials, spokes]);
 
+	// TODO: This arrow drawing function needs to get the proper center for the central standoff cells since they have fewer spokes
 	const getCellCenter = useCallback((position: CellPosition) => {
 		const radialStep = MAXRADIUS / radials;
 		const spokeAngle = (2 * Math.PI) / spokes;
@@ -103,6 +104,8 @@ const Grid = () => {
 		const radialIndex = Math.floor(polar.radius / (MAXRADIUS / radials));
 		const spokeIndex = Math.floor(polar.angle / (2 * Math.PI / spokes));
 
+		console.log(radialIndex, spokeIndex);
+
 		setHighlightedCell({
 			path: calculateCellPath(radialIndex, spokeIndex),
 			position: { radialIndex, spokeIndex }
@@ -141,7 +144,7 @@ const Grid = () => {
 
 
 			{/* Draw connection lines between selected cells */}
-			{arrows.length >= 2 && arrows.map((cell, index) => {
+			{arrows.length > 0 && arrows.map((cell, index) => {
 				const start = getCellCenter(cell[0]);
 				const end = getCellCenter(cell[1]);
 				return (
